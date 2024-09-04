@@ -6,9 +6,11 @@
     <option name="promptHistory">
       <list>
         <option value="check the code base i want to achieve the following;&#10;once the user has logged in or registered they should remain logged in on the application till they ask to logout .&#10;in the registration i want the follwing fields added- course, year." />
+        <option value="help me with the error" />
+        <option value="create a ProfileComponent.tsx in the component folder . the component will hlold the user profile information" />
       </list>
     </option>
-    <option name="selectedModel" value="codebuddy:CLAUDE_3.5_SONNET_V7" />
+    <option name="selectedModel" value="codebuddy:GPT4_Turbo_Haiku_V7" />
     <option name="ttsEnabled" value="false" />
   </component>
 </project>
