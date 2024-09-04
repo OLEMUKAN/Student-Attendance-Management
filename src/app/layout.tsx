@@ -116,7 +116,7 @@ export default function RootLayout({
           {children}
         </main>
         <footer className="bg-blue-600 text-white p-4 text-center mt-4">
-          <p>&copy; 2023 Student Attendance System. All rights reserved.</p>
+          <p>&copy; 2024 Student Attendance System. All rights reserved.</p>
         </footer>
       </body>
     </html>

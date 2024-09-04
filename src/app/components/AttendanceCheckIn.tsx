@@ -1,20 +1,130 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card"
 import { MapPin, Loader2 } from 'lucide-react'
 import { auth, db } from '../firebase'
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
 
-const ALLOWED_DISTANCE = 100 // meters
-const CLASS_LOCATION = { latitude: 0.6124352, longitude: 32.4762159 } // Updated with actual class coordinates
-
-interface AttendanceCheckInProps {
-  classId: string
+type Lecture = {
+  id: string
+  course: string
+  lecturer: string
+  room: string
+  location: {
+    latitude: number
+    longitude: number
+  }
 }
 
-export default function AttendanceCheckIn({ classId }: AttendanceCheckInProps) {
+type TimeSlot = {
+  start: string
+  end: string
+  lectures: Lecture[]
+}
+
+type DaySchedule = {
+  [key: string]: TimeSlot[]
+}
+
+const ALLOWED_DISTANCE = 100 // meters
+
+const schedule: DaySchedule = {
+  'MONDAY': [],
+  'TUESDAY': [
+    {
+      start: '08:00',
+      end: '11:00',
+      lectures: [
+        {
+          id: 'TUE_0800_BIT3101',
+          course: 'BIT /BCS 3101/BSE 3101 User Interface & Programming with Visual Basic',
+          lecturer: 'Mr. Bukoli Herbert son',
+          room: 'Maini Lab-SC',
+          location: { latitude: 0.6124352, longitude: 32.4762159 }
+        }
+      ]
+    },
+    {
+      start: '11:00',
+      end: '14:00',
+      lectures: [
+        {
+          id: 'TUE_1100_BIT3102',
+          course: 'BIT 3102- Human Computer Interaction',
+          lecturer: 'Mr. Bazeketta Datsun',
+          room: 'Main Lab - Lady Irene',
+          location: { latitude: 0.6124352, longitude: 32.4762159 }
+        }
+      ]
+    }
+  ],
+  'WEDNESDAY': [],
+  'THURSDAY': [
+    {
+      start: '08:00',
+      end: '11:00',
+      lectures: [
+        {
+          id: 'THU_0800_BIT3104',
+          course: 'BIT 3104/BCS 3108 Business Intelligence & Data Warehousing',
+          lecturer: 'Mr. Jude Iyke Nicholars',
+          room: 'Room 8-Level 3-SC',
+          location: { latitude: 0.6124352, longitude: 32.4762159 }
+        }
+      ]
+    },
+    {
+      start: '11:00',
+      end: '14:00',
+      lectures: [
+        {
+          id: 'THU_1100_BIT3108',
+          course: 'BIT 3108/BCS 3103- Network Design & Administration',
+          lecturer: 'Ms. Nantege Hellen',
+          room: 'Room 8-Level 3-SC',
+          location: { latitude: 0.6124352, longitude: 32.4762159 }
+        }
+      ]
+    },
+    {
+      start: '14:00',
+      end: '17:00',
+      lectures: [
+        {
+          id: 'THU_1400_BIT3103',
+          course: 'BIT 3103 & YR. 4104 I.T Project Planning & Management',
+          lecturer: 'Mr. Onyango Laban',
+          room: 'Room 1-Level 3-SC',
+          location: { latitude: 0.6124352, longitude: 32.4762159 }
+        }
+      ]
+    }
+  ],
+  'FRIDAY': [
+    {
+      start: '08:00',
+      end: '11:00',
+      lectures: [
+        {
+          id: 'FRI_0800_BIT3105',
+          course: 'BIT/BCS 3105 Systems Administration',
+          lecturer: 'Mr. Muchake Brian',
+          room: 'Room: D1-1 Lab (Block D)',
+          location: { latitude: 0.6124352, longitude: 32.4762159 }
+        }
+      ]
+    }
+  ]
+}
+
+export default function AttendanceCheckIn() {
+  const [currentDay, setCurrentDay] = useState<string>('')
+  const [currentTime, setCurrentTime] = useState<string>('')
+  const [availableLectures, setAvailableLectures] = useState<Lecture[]>([])
+  const [selectedLecture, setSelectedLecture] = useState<Lecture | null>(null)
   const [location, setLocation] = useState<GeolocationCoordinates | null>(null)
   const [distance, setDistance] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -22,15 +132,39 @@ export default function AttendanceCheckIn({ classId }: AttendanceCheckInProps) {
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
-    if ('geolocation' in navigator) {
+    const updateDateTime = () => {
+      const now = new Date()
+      const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY']
+      setCurrentDay(days[now.getDay()])
+      setCurrentTime(now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }))
+    }
+
+    updateDateTime()
+    const timer = setInterval(updateDateTime, 60000) // Update every minute
+
+    return () => clearInterval(timer)
+  }, [])
+
+  useEffect(() => {
+    const daySchedule = schedule[currentDay] || []
+    const currentTimeSlot = daySchedule.find(slot => 
+      currentTime >= slot.start && currentTime < slot.end
+    )
+
+    setAvailableLectures(currentTimeSlot?.lectures || [])
+    setSelectedLecture(null)
+  }, [currentDay, currentTime])
+
+  useEffect(() => {
+    if ('geolocation' in navigator && selectedLecture) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           setLocation(position.coords)
           const calculatedDistance = calculateDistance(
             position.coords.latitude,
             position.coords.longitude,
-            CLASS_LOCATION.latitude,
-            CLASS_LOCATION.longitude
+            selectedLecture.location.latitude,
+            selectedLecture.location.longitude
           )
           setDistance(calculatedDistance)
         },
@@ -38,10 +172,10 @@ export default function AttendanceCheckIn({ classId }: AttendanceCheckInProps) {
           setError('Unable to retrieve your location')
         }
       )
-    } else {
+    } else if (!('geolocation' in navigator)) {
       setError('Geolocation is not supported by your browser')
     }
-  }, [])
+  }, [selectedLecture])
 
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
     const R = 6371e3 // Earth's radius in meters
@@ -58,9 +192,19 @@ export default function AttendanceCheckIn({ classId }: AttendanceCheckInProps) {
     return R * c
   }
 
+  const handleLectureSelect = (lectureId: string) => {
+    const lecture = availableLectures.find(l => l.id === lectureId)
+    setSelectedLecture(lecture || null)
+  }
+
   const handleCheckIn = async () => {
     if (!auth.currentUser) {
       setError('You must be logged in to check in')
+      return
+    }
+
+    if (!selectedLecture) {
+      setError('Please select a lecture to check in')
       return
     }
 
@@ -71,9 +215,9 @@ export default function AttendanceCheckIn({ classId }: AttendanceCheckInProps) {
 
     setIsLoading(true)
     try {
-      await setDoc(doc(db, 'attendance', `${classId}_${auth.currentUser.uid}`), {
+      await setDoc(doc(db, 'attendance', `${selectedLecture.id}_${auth.currentUser.uid}`), {
         userId: auth.currentUser.uid,
-        classId: classId,
+        lectureId: selectedLecture.id,
         timestamp: serverTimestamp(),
         location: {
           latitude: location?.latitude,
@@ -91,29 +235,50 @@ export default function AttendanceCheckIn({ classId }: AttendanceCheckInProps) {
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader>
-        <CardTitle>Attendance Check-In</CardTitle>
-        <CardDescription>Check in for your class</CardDescription>
+        <CardTitle>Lecture Attendance</CardTitle>
+        <CardDescription>Select your lecture and check in</CardDescription>
       </CardHeader>
-      <CardContent>
-        {error ? (
-          <p className="text-red-500">{error}</p>
-        ) : location ? (
-          <div>
-            <p>Your current location has been detected.</p>
-            {distance !== null && (
+      <CardContent className="space-y-4">
+        <div>
+          <p className="text-sm font-medium">Current Day: {currentDay}</p>
+          <p className="text-sm font-medium">Current Time: {currentTime}</p>
+        </div>
+        {availableLectures.length > 0 ? (
+          <>
+            <Select onValueChange={handleLectureSelect} value={selectedLecture?.id || ''}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a lecture" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableLectures.map((lecture) => (
+                  <SelectItem key={lecture.id} value={lecture.id}>
+                    {lecture.course} - {lecture.lecturer}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectedLecture && (
+              <div className="text-sm">
+                <p><strong>Course:</strong> {selectedLecture.course}</p>
+                <p><strong>Lecturer:</strong> {selectedLecture.lecturer}</p>
+                <p><strong>Room:</strong> {selectedLecture.room}</p>
+              </div>
+            )}
+            {error && <p className="text-red-500">{error}</p>}
+            {location && distance !== null && (
               <p>
                 You are approximately {Math.round(distance)} meters from the class location.
               </p>
             )}
-          </div>
+          </>
         ) : (
-          <p>Detecting your location...</p>
+          <p>No lectures available at this time.</p>
         )}
       </CardContent>
       <CardFooter>
         <Button
           onClick={handleCheckIn}
-          disabled={isCheckedIn || isLoading || !location || (distance !== null && distance > ALLOWED_DISTANCE)}
+          disabled={isCheckedIn || isLoading || !selectedLecture || !location || (distance !== null && distance > ALLOWED_DISTANCE)}
           className="w-full"
         >
           {isLoading ? (

@@ -62,7 +62,7 @@ export default function StudentDashboard() {
             <p><strong>Year:</strong> {userData.year}</p>
           </CardContent>
         </Card>
-        <AttendanceCheckIn classId="CURRENT_CLASS_ID" />
+        <AttendanceCheckIn />
       </div>
     </div>
   )
