@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="CodebuddyPersistentProjectState">
+    <option name="autoFileMode" value="CURRENT_OPEN" />
     <option name="autoFileSelection" value="true" />
     <option name="promptHistory">
       <list>
@@ -8,9 +9,10 @@
         <option value="help me with the error" />
         <option value="create a ProfileComponent.tsx in the component folder . the component will hlold the user profile information" />
         <option value="create .env file and put the environment variables" />
+        <option value="what parts avent been implemented or used yet" />
       </list>
     </option>
-    <option name="selectedModel" value="codebuddy:GPT4_Turbo_Haiku_V7" />
+    <option name="selectedModel" value="codebuddy:CLAUDE_3.5_SONNET_V7" />
     <option name="ttsEnabled" value="false" />
   </component>
 </project>

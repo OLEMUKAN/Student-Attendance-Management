@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification } from 'firebase/auth';
 import { auth, db } from '../firebase';
 import { doc, setDoc } from 'firebase/firestore';
 
@@ -20,14 +20,15 @@ export default function RegisterForm() {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       await updateProfile(userCredential.user, { displayName: name });
+      await sendEmailVerification(userCredential.user); // Send verification email
 
       // Add user to Firestore with pending verification status
       await setDoc(doc(db, 'users', userCredential.user.uid), {
         name,
         email,
         role: 'student',
-          course,
-            year,
+        course,
+        year,
         verificationStatus: 'pending'
       });
 
@@ -63,7 +64,7 @@ export default function RegisterForm() {
           className="w-full p-2 border rounded"
         />
       </div>
-        <div>
+      <div>
         <label htmlFor="course" className="block mb-1">Course</label>
         <input
           type="text"
@@ -72,8 +73,8 @@ export default function RegisterForm() {
           onChange={(e) => setCourse(e.target.value)}
           required
           className="w-full p-2 border rounded"/>
-        </div>
-        <div>
+      </div>
+      <div>
         <label htmlFor="year" className="block mb-1">Year</label>
         <input
           type="text"
@@ -82,7 +83,7 @@ export default function RegisterForm() {
           onChange={(e) => setYear(e.target.value)}
           required
           className="w-full p-2 border rounded"/>
-        </div>
+      </div>
       <div>
         <label htmlFor="password" className="block mb-1">Password</label>
         <input
@@ -99,5 +100,6 @@ export default function RegisterForm() {
         Register
       </button>
     </form>
+    
   );
 }

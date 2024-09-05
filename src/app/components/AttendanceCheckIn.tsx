@@ -200,26 +200,32 @@ export default function AttendanceCheckIn() {
   useEffect(() => {
     const uploadScheduleToFirestore = async () => {
       try {
-        const scheduleRef = collection(db, 'schedule')
-        for (const [day, timeSlots] of Object.entries(schedule)) {
-          for (const timeSlot of timeSlots) {
-            for (const lecture of timeSlot.lectures) {
-              await addDoc(scheduleRef, {
-                day,
-                startTime: timeSlot.start,
-                endTime: timeSlot.end,
-                ...lecture
-              })
+        const scheduleRef = collection(db, 'schedule');
+        const scheduleSnapshot = await getDocs(scheduleRef);
+
+        if (scheduleSnapshot.empty) {
+          for (const [day, timeSlots] of Object.entries(schedule)) {
+            for (const timeSlot of timeSlots) {
+              for (const lecture of timeSlot.lectures) {
+                await addDoc(scheduleRef, {
+                  day,
+                  startTime: timeSlot.start,
+                  endTime: timeSlot.end,
+                  ...lecture
+                });
+              }
             }
           }
+          console.log('Schedule uploaded to Firestore');
+        } else {
+          console.log('Schedule already exists in Firestore');
         }
-        console.log('Schedule uploaded to Firestore')
       } catch (error) {
-        console.error('Error uploading schedule to Firestore:', error)
+        console.error('Error uploading schedule to Firestore:', error);
       }
-    }
+    };
 
-    uploadScheduleToFirestore()
+    uploadScheduleToFirestore();
   }, [])
 
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {

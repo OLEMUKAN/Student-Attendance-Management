@@ -23,6 +23,16 @@ export default function ProfilePage() {
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (currentUser) => {
       if (currentUser) {
+        if (!currentUser.emailVerified) {
+          toast({
+            title: "Email not verified",
+            description: "Please verify your email to access your profile.",
+            variant: "destructive",
+          });
+          router.push('/profile');
+          return;
+        }
+
         setUser(currentUser)
         setEmail(currentUser.email || '')
         setName(currentUser.displayName || '')

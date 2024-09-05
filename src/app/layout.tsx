@@ -4,9 +4,14 @@ import './globals.css'
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Button } from "@/components/ui/button"
-import { auth } from './firebase' 
+import NavLink from "./components/NavLink" // Updated import
+import { auth, db } from './firebase' 
 import { User } from 'firebase/auth'
 import LogoutButton from './components/LogoutButton'
+import Notification from './components/notification'
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { User as UserIcon, Home, Calendar, Bell, BookOpen, Settings, Menu, ChartBar, Users } from 'lucide-react'
+import Link from 'next/link'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,9 +20,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { User as UserIcon, Home, Calendar, Bell, BookOpen, Settings } from 'lucide-react'
-import Link from 'next/link'
+import { doc, getDoc } from 'firebase/firestore'
+import Notifications from './components/notification'
+
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -27,13 +32,20 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   const [user, setUser] = useState<User | null>(null)
+  const [userRole, setUserRole] = useState<string | null>(null)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user) {
         setUser(user)
+        const userDoc = await getDoc(doc(db, 'users', user.uid))
+        if (userDoc.exists()) {
+          setUserRole(userDoc.data().role)
+        }
       } else {
         setUser(null)
+        setUserRole(null)
       }
     })
 
@@ -59,10 +71,16 @@ export default function RootLayout({
               </Link>
               {user && (
                 <nav className="hidden md:flex space-x-4">
-                  <NavLink href="/" icon={<Home className="h-4 w-4" />} label="Home" />
-                  <NavLink href="/dashboard" icon={<UserIcon className="h-4 w-4" />} label="Attend" />
-                  <NavLink href="/timetable" icon={<Calendar className="h-4 w-4" />} label="Timetable" />
-                  <NavLink href="/attendance" icon={<BookOpen className="h-4 w-4" />} label="Records" />
+                  <NavLink href="/" icon={Home} label="Home" />
+                  <NavLink href="/dashboard" icon={UserIcon} label="Attend" />
+                  <NavLink href="/timetable" icon={Calendar} label="Timetable" />
+                  <NavLink href="/attendance" icon={BookOpen} label="Records" />
+                  {userRole === 'admin' && (
+                    <>
+                      <NavLink href="/admin/dashboard" icon={ChartBar} label="Admin Dashboard" />
+                      <NavLink href="/admin/verifications" icon={Users} label="Verifications" />
+                    </>
+                  )}
                 </nav>
               )}
             </motion.div>
@@ -73,11 +91,7 @@ export default function RootLayout({
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.5 }}
               >
-                <Button variant="ghost" size="icon" className="relative">
-                  <Bell className="h-5 w-5" />
-                  <span className="sr-only">Notifications</span>
-                  <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500"></span>
-                </Button>
+                <Notifications/>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-8 w-8 rounded-full">
@@ -102,9 +116,9 @@ export default function RootLayout({
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <Link href="/settings" className="flex items-center">
+                      <Link href="/password" className="flex items-center">
                         <Settings className="mr-2 h-4 w-4" />
-                        <span>Settings</span>
+                        <span>Password</span>
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
@@ -129,7 +143,25 @@ export default function RootLayout({
                 </Button>
               </motion.div>
             )}
+            <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+              <Menu className="h-6 w-6" />
+            </Button>
           </div>
+          {mobileMenuOpen && user && (
+            <nav className="md:hidden bg-white border-t p-4">
+              <div className="flex flex-col space-y-4">
+                <NavLink href="/" icon={Home} label="Home" />
+                <NavLink href="/dashboard" icon={UserIcon} label="Attend" />
+                <NavLink href="/timetable" icon={Calendar} label="Timetable" />
+                <NavLink href="/attendance" icon={BookOpen} label="Records" />
+                <NavLink href="/profile" icon={UserIcon} label="Profile" />
+                <NavLink href="/password" icon={Settings} label="Password" />
+                <button onClick={() => auth.signOut()} className="flex items-center text-gray-700 hover:text-primary">
+                  <LogoutButton />
+                </button>
+              </div>
+            </nav>
+          )}
         </header>
         <main className="flex-grow container mx-auto p-4 mt-4">
           {children}
@@ -139,17 +171,5 @@ export default function RootLayout({
         </footer>
       </body>
     </html>
-  )
-}
-
-function NavLink({ href, icon, label }: { href: string; icon: React.ReactNode; label: string }) {
-  return (
-    <Link 
-      href={href} 
-      className="flex items-center space-x-1 text-sm font-medium text-gray-700 hover:text-primary transition-colors"
-    >
-      {icon}
-      <span>{label}</span>
-    </Link>
   )
 }

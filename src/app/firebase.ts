@@ -2,8 +2,7 @@
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, setPersistence, browserLocalPersistence } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore';
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+import { getDoc, doc, setDoc } from 'firebase/firestore';
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -19,4 +18,14 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0
 const auth = getAuth(app);
 const db = getFirestore(app);
 setPersistence(auth, browserLocalPersistence);
+
+auth.onAuthStateChanged(async (user) => {
+  if (user && user.email === "olemukan4@gmail.com") {
+    const userDoc = await getDoc(doc(db, 'users', user.uid));
+    if (userDoc.exists() && userDoc.data().role !== 'admin') {
+      await setDoc(doc(db, 'users', user.uid), { role: 'admin' }, { merge: true });
+    }
+  }
+});
+
 export { auth, db };
