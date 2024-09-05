@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect,useCallback  } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { MapPin, Loader2 } from 'lucide-react'
 import { auth, db } from '../firebase'
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
+import { doc, setDoc, serverTimestamp, query, collection, where, getDocs, addDoc } from 'firebase/firestore'
 
 type Lecture = {
   id: string
@@ -130,6 +130,20 @@ export default function AttendanceCheckIn() {
   const [error, setError] = useState<string | null>(null)
   const [isCheckedIn, setIsCheckedIn] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [hasCheckedIn, setHasCheckedIn] = useState(false)
+
+  const checkExistingCheckIn = useCallback(async () => {
+    if (!auth.currentUser || !selectedLecture) return
+
+    const q = query(
+      collection(db, 'attendance'),
+      where('userId', '==', auth.currentUser.uid),
+      where('lectureId', '==', selectedLecture.id)
+    )
+
+    const querySnapshot = await getDocs(q)
+    setHasCheckedIn(!querySnapshot.empty)
+  }, [selectedLecture])
 
   useEffect(() => {
     const updateDateTime = () => {
@@ -177,6 +191,37 @@ export default function AttendanceCheckIn() {
     }
   }, [selectedLecture])
 
+  useEffect(() => {
+    if (selectedLecture && auth.currentUser) {
+      checkExistingCheckIn()
+    }
+  }, [selectedLecture, checkExistingCheckIn])
+
+  useEffect(() => {
+    const uploadScheduleToFirestore = async () => {
+      try {
+        const scheduleRef = collection(db, 'schedule')
+        for (const [day, timeSlots] of Object.entries(schedule)) {
+          for (const timeSlot of timeSlots) {
+            for (const lecture of timeSlot.lectures) {
+              await addDoc(scheduleRef, {
+                day,
+                startTime: timeSlot.start,
+                endTime: timeSlot.end,
+                ...lecture
+              })
+            }
+          }
+        }
+        console.log('Schedule uploaded to Firestore')
+      } catch (error) {
+        console.error('Error uploading schedule to Firestore:', error)
+      }
+    }
+
+    uploadScheduleToFirestore()
+  }, [])
+
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
     const R = 6371e3 // Earth's radius in meters
     const φ1 = lat1 * Math.PI / 180
@@ -195,6 +240,8 @@ export default function AttendanceCheckIn() {
   const handleLectureSelect = (lectureId: string) => {
     const lecture = availableLectures.find(l => l.id === lectureId)
     setSelectedLecture(lecture || null)
+    setIsCheckedIn(false)
+    setHasCheckedIn(false)
   }
 
   const handleCheckIn = async () => {
@@ -213,6 +260,11 @@ export default function AttendanceCheckIn() {
       return
     }
 
+    if (hasCheckedIn) {
+      setError('You have already checked in for this lecture')
+      return
+    }
+
     setIsLoading(true)
     try {
       await setDoc(doc(db, 'attendance', `${selectedLecture.id}_${auth.currentUser.uid}`), {
@@ -225,6 +277,7 @@ export default function AttendanceCheckIn() {
         }
       })
       setIsCheckedIn(true)
+      setHasCheckedIn(true)
     } catch (error) {
       setError('Failed to check in. Please try again.')
     } finally {
@@ -262,6 +315,7 @@ export default function AttendanceCheckIn() {
                 <p><strong>Course:</strong> {selectedLecture.course}</p>
                 <p><strong>Lecturer:</strong> {selectedLecture.lecturer}</p>
                 <p><strong>Room:</strong> {selectedLecture.room}</p>
+                {hasCheckedIn && <p className="text-green-500 font-medium">You have already checked in for this lecture.</p>}
               </div>
             )}
             {error && <p className="text-red-500">{error}</p>}
@@ -278,7 +332,7 @@ export default function AttendanceCheckIn() {
       <CardFooter>
         <Button
           onClick={handleCheckIn}
-          disabled={isCheckedIn || isLoading || !selectedLecture || !location || (distance !== null && distance > ALLOWED_DISTANCE)}
+          disabled={isCheckedIn || isLoading || !selectedLecture || !location || (distance !== null && distance > ALLOWED_DISTANCE) || hasCheckedIn}
           className="w-full"
         >
           {isLoading ? (
@@ -286,7 +340,7 @@ export default function AttendanceCheckIn() {
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Checking In...
             </>
-          ) : isCheckedIn ? (
+          ) : isCheckedIn || hasCheckedIn ? (
             <>
               <MapPin className="mr-2 h-4 w-4" />
               Checked In
