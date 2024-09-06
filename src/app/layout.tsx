@@ -1,16 +1,16 @@
 "use client"
+
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Button } from "@/components/ui/button"
-import NavLink from "./components/NavLink" // Updated import
-import { auth, db } from './firebase' 
+import NavLink from "./components/NavLink"
+import { auth, db } from './firebase'
 import { User } from 'firebase/auth'
 import LogoutButton from './components/LogoutButton'
-import Notification from './components/notification'
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { User as UserIcon, Home, Calendar, Bell, BookOpen, Settings, Menu, ChartBar, Users } from 'lucide-react'
+import { User as UserIcon, Home, Calendar, Bell, BookOpen, Settings, Menu, ChevronDown, ChartBar, Users } from 'lucide-react'
 import Link from 'next/link'
 import {
   DropdownMenu,
@@ -23,7 +23,6 @@ import {
 import { doc, getDoc } from 'firebase/firestore'
 import Notifications from './components/notification'
 
-
 const inter = Inter({ subsets: ['latin'] })
 
 export default function RootLayout({
@@ -33,6 +32,7 @@ export default function RootLayout({
 }) {
   const [user, setUser] = useState<User | null>(null)
   const [userRole, setUserRole] = useState<string | null>(null)
+  const [dropdownOpen, setDropdownOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
@@ -52,6 +52,29 @@ export default function RootLayout({
     return () => unsubscribe()
   }, [])
 
+  const closeDropdown = () => {
+    setDropdownOpen(false)
+  }
+
+  const closeMobileMenu = () => {
+    setMobileMenuOpen(false)
+  }
+
+  const NavItems = () => (
+    <>
+      <NavLink href="/" icon={Home} label="Home" onClick={closeMobileMenu} />
+      <NavLink href="/dashboard" icon={UserIcon} label="Attend" onClick={closeMobileMenu} />
+      <NavLink href="/timetable" icon={Calendar} label="Timetable" onClick={closeMobileMenu} />
+      <NavLink href="/attendance" icon={BookOpen} label="Records" onClick={closeMobileMenu} />
+      {userRole === 'admin' && (
+        <>
+          <NavLink href="/admin/dashboard" icon={ChartBar} label="Admin Dashboard" onClick={closeMobileMenu} />
+          <NavLink href="/admin/verifications" icon={Users} label="Verifications" onClick={closeMobileMenu} />
+        </>
+      )}
+    </>
+  )
+
   return (
     <html lang="en">
       <body className={`${inter.className} flex flex-col min-h-screen bg-gradient-to-br from-purple-100 via-pink-100 to-red-100`}>
@@ -65,34 +88,23 @@ export default function RootLayout({
             >
               <Link href="/" className="flex items-center space-x-2 hover:text-primary transition-colors">
                 <BookOpen className="h-6 w-6 text-primary" />
-                <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-pink-600">
+                <h1 className="hidden md:block text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-pink-600">
                   Student Attendance System
                 </h1>
               </Link>
-              {user && (
-                <nav className="hidden md:flex space-x-4">
-                  <NavLink href="/" icon={Home} label="Home" />
-                  <NavLink href="/dashboard" icon={UserIcon} label="Attend" />
-                  <NavLink href="/timetable" icon={Calendar} label="Timetable" />
-                  <NavLink href="/attendance" icon={BookOpen} label="Records" />
-                  {userRole === 'admin' && (
-                    <>
-                      <NavLink href="/admin/dashboard" icon={ChartBar} label="Admin Dashboard" />
-                      <NavLink href="/admin/verifications" icon={Users} label="Verifications" />
-                    </>
-                  )}
-                </nav>
-              )}
             </motion.div>
             {user ? (
               <motion.div 
-                className="flex items-center space-x-4"
+                className="flex items-center space-x-2 md:space-x-4"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.5 }}
               >
-                <Notifications/>
-                <DropdownMenu>
+                <nav className="hidden md:flex space-x-4">
+                  <NavItems />
+                </nav>
+                <Notifications />
+                <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                       <Avatar className="h-8 w-8">
@@ -109,58 +121,61 @@ export default function RootLayout({
                       </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
+                    <DropdownMenuItem asChild onClick={closeDropdown}>
                       <Link href="/profile" className="flex items-center">
                         <UserIcon className="mr-2 h-4 w-4" />
                         <span>Profile</span>
                       </Link>
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
+                    <DropdownMenuItem asChild onClick={closeDropdown}>
                       <Link href="/password" className="flex items-center">
                         <Settings className="mr-2 h-4 w-4" />
                         <span>Password</span>
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem>
+                    <DropdownMenuItem onClick={closeDropdown}>
                       <LogoutButton />
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="md:hidden"
+                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                >
+                  <Menu className="h-6 w-6" />
+                </Button>
               </motion.div>
             ) : (
               <motion.div 
-                className="space-x-2"
+                className="flex space-x-2"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.5 }}
               >
-                <Button asChild variant="ghost">
+                <Button asChild variant="ghost" className="px-3 py-1 text-sm">
                   <Link href="/login">Log In</Link>
                 </Button>
-                <Button asChild className="bg-gradient-to-r from-purple-500 to-pink-500 text-white">
+                <Button asChild className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-3 py-1 text-sm">
                   <Link href="/register">Register</Link>
                 </Button>
               </motion.div>
             )}
-            <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
-              <Menu className="h-6 w-6" />
-            </Button>
           </div>
-          {mobileMenuOpen && user && (
-            <nav className="md:hidden bg-white border-t p-4">
-              <div className="flex flex-col space-y-4">
-                <NavLink href="/" icon={Home} label="Home" />
-                <NavLink href="/dashboard" icon={UserIcon} label="Attend" />
-                <NavLink href="/timetable" icon={Calendar} label="Timetable" />
-                <NavLink href="/attendance" icon={BookOpen} label="Records" />
-                <NavLink href="/profile" icon={UserIcon} label="Profile" />
-                <NavLink href="/password" icon={Settings} label="Password" />
-                <button onClick={() => auth.signOut()} className="flex items-center text-gray-700 hover:text-primary">
-                  <LogoutButton />
-                </button>
+          {user && mobileMenuOpen && (
+            <motion.nav
+              className="md:hidden bg-white border-t"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              <div className="container py-2 flex flex-col space-y-2">
+                <NavItems />
               </div>
-            </nav>
+            </motion.nav>
           )}
         </header>
         <main className="flex-grow container mx-auto p-4 mt-4">

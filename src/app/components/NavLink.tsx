@@ -1,19 +1,23 @@
-"use client";
-
-import Link from 'next/link';
-import { ReactElement } from 'react';
+'use client'
+import Link from 'next/link'
+import { LucideIcon } from 'lucide-react'
 
 interface NavLinkProps {
-  href: string;
-  icon: React.ElementType;
-  label: string;
+  href: string
+  icon: LucideIcon
+  label: string
+  onClick?: () => void // Added onClick prop
 }
 
-const NavLink = ({ href, icon: Icon, label }: NavLinkProps): ReactElement => (
-  <Link href={href} className="flex items-center space-x-2 text-sm font-medium text-gray-700 hover:text-primary transition-colors">
-    <Icon className="h-4 w-4" />
-    <span>{label}</span>
-  </Link>
-);
-
-export default NavLink;
+export default function NavLink({ href, icon: Icon, label, onClick }: NavLinkProps) {
+  return (
+    <Link 
+      href={href} 
+      className="flex items-center space-x-2 text-gray-700 hover:text-primary transition-colors duration-200 hover:bg-gray-100 px-3 py-2 rounded-md"
+      onClick={onClick} // Trigger the onClick handler when the link is clicked
+    >
+      <Icon className="h-5 w-5" />
+      <span>{label}</span>
+    </Link>
+  )
+}

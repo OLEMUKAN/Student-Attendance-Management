@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect,useCallback  } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { MapPin, Loader2 } from 'lucide-react'
+import { MapPin, Loader2, RefreshCw } from 'lucide-react'
 import { auth, db } from '../firebase'
 import { doc, setDoc, serverTimestamp, query, collection, where, getDocs, addDoc } from 'firebase/firestore'
 
@@ -131,6 +131,7 @@ export default function AttendanceCheckIn() {
   const [isCheckedIn, setIsCheckedIn] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [hasCheckedIn, setHasCheckedIn] = useState(false)
+  const [isUpdatingLocation, setIsUpdatingLocation] = useState(false)
 
   const checkExistingCheckIn = useCallback(async () => {
     if (!auth.currentUser || !selectedLecture) return
@@ -169,8 +170,24 @@ export default function AttendanceCheckIn() {
     setSelectedLecture(null)
   }, [currentDay, currentTime])
 
-  useEffect(() => {
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371e3 // Earth's radius in meters
+    const φ1 = lat1 * Math.PI / 180
+    const φ2 = lat2 * Math.PI / 180
+    const Δφ = (lat2 - lat1) * Math.PI / 180
+    const Δλ = (lon2 - lon1) * Math.PI / 180
+
+    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ / 2) * Math.sin(Δλ / 2)
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+
+    return R * c
+  }
+
+  const updateLocation = useCallback(() => {
     if ('geolocation' in navigator && selectedLecture) {
+      setIsUpdatingLocation(true)
       navigator.geolocation.getCurrentPosition(
         (position) => {
           setLocation(position.coords)
@@ -181,15 +198,24 @@ export default function AttendanceCheckIn() {
             selectedLecture.location.longitude
           )
           setDistance(calculatedDistance)
+          setIsUpdatingLocation(false)
         },
         (error) => {
           setError('Unable to retrieve your location')
-        }
+          setIsUpdatingLocation(false)
+        },
+        { maximumAge: 0, timeout: 5000, enableHighAccuracy: true }
       )
     } else if (!('geolocation' in navigator)) {
       setError('Geolocation is not supported by your browser')
     }
   }, [selectedLecture])
+
+  useEffect(() => {
+    if (selectedLecture) {
+      updateLocation()
+    }
+  }, [selectedLecture, updateLocation])
 
   useEffect(() => {
     if (selectedLecture && auth.currentUser) {
@@ -228,26 +254,12 @@ export default function AttendanceCheckIn() {
     uploadScheduleToFirestore();
   }, [])
 
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-    const R = 6371e3 // Earth's radius in meters
-    const φ1 = lat1 * Math.PI / 180
-    const φ2 = lat2 * Math.PI / 180
-    const Δφ = (lat2 - lat1) * Math.PI / 180
-    const Δλ = (lon2 - lon1) * Math.PI / 180
-
-    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-              Math.cos(φ1) * Math.cos(φ2) *
-              Math.sin(Δλ / 2) * Math.sin(Δλ / 2)
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-
-    return R * c
-  }
-
   const handleLectureSelect = (lectureId: string) => {
     const lecture = availableLectures.find(l => l.id === lectureId)
     setSelectedLecture(lecture || null)
     setIsCheckedIn(false)
     setHasCheckedIn(false)
+    setError(null)
   }
 
   const handleCheckIn = async () => {
@@ -326,9 +338,23 @@ export default function AttendanceCheckIn() {
             )}
             {error && <p className="text-red-500">{error}</p>}
             {location && distance !== null && (
-              <p>
-                You are approximately {Math.round(distance)} meters from the class location.
-              </p>
+              <div className="flex items-center justify-between">
+                <p>
+                  You are approximately {Math.round(distance)} meters from the class location.
+                </p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={updateLocation}
+                  disabled={isUpdatingLocation}
+                >
+                  {isUpdatingLocation ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
             )}
           </>
         ) : (
@@ -338,7 +364,7 @@ export default function AttendanceCheckIn() {
       <CardFooter>
         <Button
           onClick={handleCheckIn}
-          disabled={isCheckedIn || isLoading || !selectedLecture || !location || (distance !== null && distance > ALLOWED_DISTANCE) || hasCheckedIn}
+          disabled={isCheckedIn || isLoading || !selectedLecture || !location || (distance !== null && distance > ALLOWED_DISTANCE) || hasCheckedIn || isUpdatingLocation}
           className="w-full"
         >
           {isLoading ? (
