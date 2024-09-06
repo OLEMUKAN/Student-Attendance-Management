@@ -204,7 +204,7 @@ export default function AttendanceCheckIn() {
           setError('Unable to retrieve your location')
           setIsUpdatingLocation(false)
         },
-        { maximumAge: 0, timeout: 5000, enableHighAccuracy: true }
+        { maximumAge: 0, timeout: 10000, enableHighAccuracy: true }
       )
     } else if (!('geolocation' in navigator)) {
       setError('Geolocation is not supported by your browser')
@@ -310,14 +310,14 @@ export default function AttendanceCheckIn() {
         <CardDescription>Select your lecture and check in</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div>
+        <div className="flex flex-col sm:flex-row sm:justify-between">
           <p className="text-sm font-medium">Current Day: {currentDay}</p>
           <p className="text-sm font-medium">Current Time: {currentTime}</p>
         </div>
         {availableLectures.length > 0 ? (
-          <>
+          <div className="space-y-4">
             <Select onValueChange={handleLectureSelect} value={selectedLecture?.id || ''}>
-              <SelectTrigger>
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select a lecture" />
               </SelectTrigger>
               <SelectContent>
@@ -329,17 +329,21 @@ export default function AttendanceCheckIn() {
               </SelectContent>
             </Select>
             {selectedLecture && (
-              <div className="text-sm">
+              <div className="text-sm space-y-2 bg-gray-50 p-3 rounded-md">
                 <p><strong>Course:</strong> {selectedLecture.course}</p>
                 <p><strong>Lecturer:</strong> {selectedLecture.lecturer}</p>
                 <p><strong>Room:</strong> {selectedLecture.room}</p>
-                {hasCheckedIn && <p className="text-green-500 font-medium">You have already checked in for this lecture.</p>}
+                {hasCheckedIn && (
+                  <p className="text-green-500 font-medium">
+                    You have already checked in for this lecture.
+                  </p>
+                )}
               </div>
             )}
-            {error && <p className="text-red-500">{error}</p>}
+            {error && <p className="text-red-500 text-sm">{error}</p>}
             {location && distance !== null && (
-              <div className="flex items-center justify-between">
-                <p>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0">
+                <p className="text-sm">
                   You are approximately {Math.round(distance)} meters from the class location.
                 </p>
                 <Button
@@ -356,9 +360,9 @@ export default function AttendanceCheckIn() {
                 </Button>
               </div>
             )}
-          </>
+          </div>
         ) : (
-          <p>No lectures available at this time.</p>
+          <p className="text-sm text-center">No lectures available at this time.</p>
         )}
       </CardContent>
       <CardFooter>

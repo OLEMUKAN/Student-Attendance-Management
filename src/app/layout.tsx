@@ -3,7 +3,7 @@
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from "@/components/ui/button"
 import NavLink from "./components/NavLink"
 import { auth, db } from './firebase'
@@ -164,22 +164,26 @@ export default function RootLayout({
               </motion.div>
             )}
           </div>
-          {user && mobileMenuOpen && (
-            <motion.nav
-              className="md:hidden bg-white border-t"
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
-            >
-              <div className="container py-2 flex flex-col space-y-2">
-                <NavItems />
-              </div>
-            </motion.nav>
-          )}
+          <AnimatePresence>
+            {user && mobileMenuOpen && (
+              <motion.nav
+                className="md:hidden bg-white border-t"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <div className="container py-2 flex flex-col space-y-2">
+                  <NavItems />
+                </div>
+              </motion.nav>
+            )}
+          </AnimatePresence>
         </header>
         <main className="flex-grow container mx-auto p-4 mt-4">
-          {children}
+          <div className="max-w-7xl mx-auto">
+            {children}
+          </div>
         </main>
         <footer className="bg-gradient-to-r from-purple-600 to-pink-600 text-white p-4 text-center mt-4">
           <p>&copy; 2024 Student Attendance System. All rights reserved.</p>
